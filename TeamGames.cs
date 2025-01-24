@@ -55,6 +55,7 @@ namespace Oxide.Plugins
                 ["ItemNotFound"] = "Item {0} not found.",
                 ["CreatingItem"] = "Creating {0} of {1}.",
                 ["ItemGiven"] = "Gave {0} {1} to {2}.",
+                ["ItemDropped"] = "Dropped {0} {1} to {2}.",
                 ["FailedToCreate"] = "Failed to create item {0}.",
                 ["SetCommandUsage"] = "Usage: /tgsetcmd <claim|secret> <newname>",
                 ["InvalidCommandType"] = "Invalid command type. Use 'claim' or 'secret'.",
@@ -233,8 +234,16 @@ namespace Oxide.Plugins
                 Item item = ItemManager.Create(itemDefinition, transaction.product_amount);
                 if (item != null)
                 {
-                    player.inventory.GiveItem(item);
-                    player.ChatMessage(Lang("ItemGiven", player.UserIDString, transaction.product_amount, itemName, player.displayName));
+                    bool given = player.inventory.GiveItem(item);
+                    if (!given)
+                    {
+                        item.Drop(player.GetDropPosition(), player.GetDropVelocity());
+                        player.ChatMessage(Lang("ItemDropped", player.UserIDString, transaction.product_amount, itemName, player.displayName));
+                    }
+                    else
+                    {
+                        player.ChatMessage(Lang("ItemGiven", player.UserIDString, transaction.product_amount, itemName, player.displayName));
+                    }
                 }
                 else
                 {
