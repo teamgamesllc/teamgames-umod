@@ -9,7 +9,7 @@ using Epic.OnlineServices.Ecom;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.0.8")]
+    [Info("TeamGames Store", "TeamGames", "1.0.9")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
