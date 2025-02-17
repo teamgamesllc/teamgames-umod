@@ -17,6 +17,7 @@ namespace Oxide.Plugins
         private string apiKey;
         private string claimCommand;
         private string secretCommand;
+        private Dictionary<string, string> headers;
 
         protected override void LoadConfig()
         {
@@ -36,9 +37,12 @@ namespace Oxide.Plugins
             apiKey = Config["store-secret-key"] as string ?? "default-key";
             claimCommand = Config["claim-command"] as string ?? "tgclaim";
             secretCommand = Config["secret-command"] as string ?? "tgsecret";
-        
-            cmd.AddChatCommand(claimCommand, this, nameof(ClaimCommand));
-            cmd.AddChatCommand(secretCommand, this, nameof(SetSecretCommand));
+
+            headers = new Dictionary<string, string>
+            {
+                ["X-API-Key"] = apiKey,
+                ["Content-Type"] = "application/json"
+            };
         }
 
         protected override void LoadDefaultMessages()
@@ -46,7 +50,7 @@ namespace Oxide.Plugins
             lang.RegisterMessages(new Dictionary<string, string>
             {
                 ["ApiOffline"] = "API Services are currently offline. Please check back shortly.",
-                ["CommandReserved"] = "Command Reserved for Administrators",
+                ["CommandReserved"] = "Command Reserved for the permission group teamgames.admin",
                 ["SecretUsage"] = "Usage: /teamgames.secret <secret>",
                 ["SecretUpdated"] = "Store secret key has been updated.",
                 ["ErrorProcessing"] = "An error occurred while processing your request. Please try again later.",
@@ -67,20 +71,24 @@ namespace Oxide.Plugins
         [ChatCommand("tg.claim")]
         private void ClaimCommand(BasePlayer player, string command, string[] args)
         {
-            var postData = new Dictionary<string, string> { ["playerName"] = player.userID.ToString() };
+            var postData = new Dictionary<string, string> { ["playerName"] = player.UserIDString };
             string jsonData = JsonConvert.SerializeObject(postData);
 
-            webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(player, code, response), this, RequestMethod.POST, new Dictionary<string, string> { ["X-API-Key"] = apiKey, ["Content-Type"] = "application/json" });
+            webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(player, code, response), this, RequestMethod.POST, headers);
         }
 
         [ChatCommand("tg.secret")]
         private void SetSecretCommand(BasePlayer player, string command, string[] args)
         {
-            if (!player.IsAdmin)
+            bool isRcon = player?.net?.connection?.authLevel == 2;
+            bool hasPermission = permission.UserHasPermission(player.UserIDString, "teamgames.admin");
+
+            if (!isRcon && !hasPermission)
             {
                 player.ChatMessage(Lang("CommandReserved", player.UserIDString));
                 return;
             }
+
             if (args.Length != 1)
             {
                 player.ChatMessage(Lang("SecretUsage", player.UserIDString));
@@ -90,54 +98,18 @@ namespace Oxide.Plugins
             apiKey = args[0];
             Config["store-secret-key"] = apiKey;
             SaveConfig();
+
+            headers["X-API-Key"] = apiKey;
+
             player.ChatMessage(Lang("SecretUpdated", player.UserIDString));
-            PrintWarning($"Store secret key has been updated by {player.displayName}.");
+            PrintWarning($"Store secret key has been updated by {player?.displayName ?? "RCON"}.");
         }
 
-        [ConsoleCommand("tg.claim")]
-        private void ConsoleClaimCommand(ConsoleSystem.Arg arg)
-        {
-            if (arg.Player() != null)
-            {
-                ClaimCommand(arg.Player(), "tgclaim", arg.Args);
-            }
-            else
-            {
-                Puts("This command can only be used by players.");
-            }
-        }
-
-        [ConsoleCommand("tg.secret")]
-        private void ConsoleSetSecretCommand(ConsoleSystem.Arg arg)
-        {
-            if (arg.Player() != null)
-            {
-                SetSecretCommand(arg.Player(), "tgsecret", arg.Args);
-            }
-            else if (arg.IsAdmin)
-            {
-                if (arg.Args == null || arg.Args.Length != 1)
-                {
-                    Puts(Lang("SecretUsage"));
-                    return;
-                }
-
-                apiKey = arg.Args[0];
-                Config["store-secret-key"] = apiKey;
-                SaveConfig();
-                Puts(Lang("SecretUpdated"));
-                PrintWarning($"Store secret key has been updated via console.");
-            }
-            else
-            {
-                Puts(Lang("CommandReserved"));
-            }
-        }
 
         [ChatCommand("tg.setcmd")]
         private void SetCommandName(BasePlayer player, string command, string[] args)
         {
-            if (!player.IsAdmin)
+            if (!permission.UserHasPermission(player.UserIDString, "teamgames.admin"))
             {
                 player.ChatMessage(Lang("CommandReserved", player.UserIDString));
                 return;
@@ -175,7 +147,7 @@ namespace Oxide.Plugins
         {
             if (string.IsNullOrEmpty(response) || code != 200)
             {
-                PrintWarning($"Failed to fetch transactions for {player.displayName}: {response ?? "No response"} (Code: {code})");
+                PrintWarning($"Failed to fetch transactions for {player.displayName}: {response ?? "No response"} (Code: {code})
                 player.ChatMessage(Lang("ApiOffline", player.UserIDString));
                 return;
             }
@@ -273,7 +245,7 @@ namespace Oxide.Plugins
             catch (FormatException ex)
             {
                 PrintWarning($"Formatting error for key '{key}': {ex.Message}");
-                return format; // Return the unformatted string in case of error
+                return format;
             }
         }
 
