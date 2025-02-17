@@ -147,7 +147,7 @@ namespace Oxide.Plugins
         {
             if (string.IsNullOrEmpty(response) || code != 200)
             {
-                PrintWarning($"Failed to fetch transactions for {player.displayName}: {response ?? "No response"} (Code: {code})
+                PrintWarning($"Failed to fetch transactions for {player.displayName}: {response ?? "No response"} (Code: {code})");
                 player.ChatMessage(Lang("ApiOffline", player.UserIDString));
                 return;
             }
