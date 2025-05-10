@@ -9,7 +9,7 @@ using Epic.OnlineServices.Ecom;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.0.9")]
+    [Info("TeamGames Store", "TeamGames", "1.1.0")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -34,15 +34,15 @@ namespace Oxide.Plugins
 
         private void Init()
         {
-            apiKey = Config["store-secret-key"] as string ?? "default-key";
-            claimCommand = Config["claim-command"] as string ?? "tgclaim";
-            secretCommand = Config["secret-command"] as string ?? "tgsecret";
-
             headers = new Dictionary<string, string>
             {
                 ["X-API-Key"] = apiKey,
                 ["Content-Type"] = "application/json"
             };
+
+            AddCovalenceCommand(claimCommand, nameof(ClaimCommand));
+            AddCovalenceCommand(secretCommand, nameof(SetSecretCommand));
+            AddCovalenceCommand("tgsetcmd", nameof(SetCommandName));
         }
 
         protected override void LoadDefaultMessages()
@@ -69,29 +69,33 @@ namespace Oxide.Plugins
         }
 
         [ChatCommand("tg.claim")]
-        private void ClaimCommand(BasePlayer player, string command, string[] args)
+        private void ClaimCommand(IPlayer player, string command, string[] args)
         {
-            var postData = new Dictionary<string, string> { ["playerName"] = player.UserIDString };
+            var basePlayer = player.Object as BasePlayer;
+            if (basePlayer == null) return;
+
+            var postData = new Dictionary<string, string> { ["playerName"] = basePlayer.UserIDString };
             string jsonData = JsonConvert.SerializeObject(postData);
 
-            webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(player, code, response), this, RequestMethod.POST, headers);
+            webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(basePlayer, code, response), this, RequestMethod.POST, headers);
         }
 
         [ChatCommand("tg.secret")]
-        private void SetSecretCommand(BasePlayer player, string command, string[] args)
+        private void SetSecretCommand(IPlayer player, string command, string[] args)
         {
-            bool isRcon = player?.net?.connection?.authLevel == 2;
-            bool hasPermission = permission.UserHasPermission(player.UserIDString, "teamgames.admin");
+            var basePlayer = player.Object as BasePlayer;
+            bool isRcon = basePlayer?.net?.connection?.authLevel == 2;
+            bool hasPermission = permission.UserHasPermission(player.Id, "teamgames.admin");
 
             if (!isRcon && !hasPermission)
             {
-                player.ChatMessage(Lang("CommandReserved", player.UserIDString));
+                player.Reply(Lang("CommandReserved", player.Id));
                 return;
             }
 
             if (args.Length != 1)
             {
-                player.ChatMessage(Lang("SecretUsage", player.UserIDString));
+                player.Reply(Lang("SecretUsage", player.Id));
                 return;
             }
 
@@ -101,22 +105,23 @@ namespace Oxide.Plugins
 
             headers["X-API-Key"] = apiKey;
 
-            player.ChatMessage(Lang("SecretUpdated", player.UserIDString));
-            PrintWarning($"Store secret key has been updated by {player?.displayName ?? "RCON"}.");
+            player.Reply(Lang("SecretUpdated", player.Id));
+            PrintWarning($"Store secret key has been updated by {player.Name ?? "RCON"}.");
         }
 
 
         [ChatCommand("tg.setcmd")]
-        private void SetCommandName(BasePlayer player, string command, string[] args)
+        private void SetCommandName(IPlayer player, string command, string[] args)
         {
-            if (!permission.UserHasPermission(player.UserIDString, "teamgames.admin"))
+            if (!permission.UserHasPermission(player.Id, "teamgames.admin"))
             {
-                player.ChatMessage(Lang("CommandReserved", player.UserIDString));
+                player.Reply(Lang("CommandReserved", player.Id));
                 return;
             }
+
             if (args.Length != 2)
             {
-                player.ChatMessage(Lang("SetCommandUsage", player.UserIDString));
+                player.Reply(Lang("SetCommandUsage", player.Id));
                 return;
             }
 
@@ -134,13 +139,13 @@ namespace Oxide.Plugins
                     secretCommand = newName;
                     break;
                 default:
-                    player.ChatMessage(Lang("InvalidCommandType", player.UserIDString));
+                    player.Reply(Lang("InvalidCommandType", player.Id));
                     return;
             }
 
             SaveConfig();
-            player.ChatMessage(Lang("CommandUpdated", player.UserIDString, cmdType, newName));
-            PrintWarning($"{cmdType} command has been updated to /{newName} by {player.displayName}.");
+            player.Reply(Lang("CommandUpdated", player.Id, cmdType, newName));
+            PrintWarning($"{cmdType} command has been updated to /{newName} by {player.Name}.");
         }
 
         private void HandleWebResponse(BasePlayer player, int code, string response)
