@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using Epic.OnlineServices.Ecom;
+using Oxide.Game.Rust.Cui;
+using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.0")]
+    [Info("TeamGames Store", "TeamGames", "1.1.1")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
