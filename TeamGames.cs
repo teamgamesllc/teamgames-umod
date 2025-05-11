@@ -1,3 +1,34 @@
+/*
+## Configuration
+The following configuration options are available:
+{
+  "store-secret-key": "your-api-key-here",
+  "claim-command": "tgclaim",
+  "secret-command": "tgsecret"
+}
+
+## Localization
+English (en):
+  "ApiOffline": "API Services are currently offline. Please check back shortly.",
+  "CommandReserved": "Command Reserved for the permission group teamgames.admin",
+  "SecretUsage": "Usage: /teamgames.secret <secret>",
+  "SecretUpdated": "Store secret key has been updated.",
+  "ErrorProcessing": "An error occurred while processing your request. Please try again later.",
+  "NullTransaction": "Encountered a null transaction object.",
+  "InvalidAmount": "Invalid product amount: {0}",
+  "ItemNotFound": "Item {0} not found.",
+  "CreatingItem": "Creating {0} of {1}.",
+  "ItemGiven": "Gave {0} {1} to {2}.",
+  "ItemDropped": "Dropped {0} {1} to {2}.",
+  "FailedToCreate": "Failed to create item {0}.",
+  "SetCommandUsage": "Usage: /tgsetcmd <claim|secret> <newname>",
+  "InvalidCommandType": "Invalid command type. Use 'claim' or 'secret'.",
+  "CommandUpdated": "{0} command has been updated to /{1}.",
+  "TeamGamesMessage": "{0}",
+  "ClaimCooldown": "You must wait {0} seconds before using this command again."
+}
+*/
+
 using Oxide.Core;
 using Oxide.Core.Plugins;
 using Oxide.Core.Libraries;
@@ -11,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.1")]
+    [Info("TeamGames Store", "TeamGames", "1.1.2")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -20,6 +51,10 @@ namespace Oxide.Plugins
         private string claimCommand;
         private string secretCommand;
         private Dictionary<string, string> headers;
+
+
+        private readonly Dictionary<ulong, float> lastClaimTimes = new Dictionary<ulong, float>();
+        private const float ClaimCooldownSeconds = 10f;
 
         protected override void LoadConfig()
         {
@@ -67,6 +102,7 @@ namespace Oxide.Plugins
                 ["InvalidCommandType"] = "Invalid command type. Use 'claim' or 'secret'.",
                 ["CommandUpdated"] = "{0} command has been updated to /{1}.",
                 ["TeamGamesMessage"] = "{0}"
+                ["ClaimCooldown"] = "You must wait {0} seconds before using this command again.",
             }, this);
         }
 
@@ -76,11 +112,28 @@ namespace Oxide.Plugins
             var basePlayer = player.Object as BasePlayer;
             if (basePlayer == null) return;
 
+            ulong userId = basePlayer.userID;
+            float currentTime = Time.realtimeSinceStartup;
+
+            if (lastClaimTimes.TryGetValue(userId, out float lastTime))
+            {
+                float timeSinceLastUse = currentTime - lastTime;
+                if (timeSinceLastUse < ClaimCooldownSeconds)
+                {
+                    float remaining = ClaimCooldownSeconds - timeSinceLastUse;
+                    player.Reply(Lang("ClaimCooldown", player.Id, Mathf.CeilToInt(remaining)));
+                    return;
+                }
+            }
+
+            lastClaimTimes[userId] = currentTime;
+
             var postData = new Dictionary<string, string> { ["playerName"] = basePlayer.UserIDString };
             string jsonData = JsonConvert.SerializeObject(postData);
 
             webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(basePlayer, code, response), this, RequestMethod.POST, headers);
         }
+
 
         [ChatCommand("tg.secret")]
         private void SetSecretCommand(IPlayer player, string command, string[] args)
