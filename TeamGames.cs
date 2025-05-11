@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.4")]
+    [Info("TeamGames Store", "TeamGames", "1.1.5")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -113,7 +113,7 @@ namespace Oxide.Plugins
             if (basePlayer == null) return;
 
             ulong userId = basePlayer.userID;
-            float currentTime = Time.realtimeSinceStartup;
+            float currentTime = UnityEngine.Time.realtimeSinceStartup;
 
             if (lastClaimTimes.TryGetValue(userId, out float lastTime))
             {
