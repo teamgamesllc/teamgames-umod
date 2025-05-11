@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.2")]
+    [Info("TeamGames Store", "TeamGames", "1.1.3")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -121,7 +121,7 @@ namespace Oxide.Plugins
                 if (timeSinceLastUse < ClaimCooldownSeconds)
                 {
                     float remaining = ClaimCooldownSeconds - timeSinceLastUse;
-                    player.Reply(Lang("ClaimCooldown", player.Id, Mathf.CeilToInt(remaining)));
+                    player.Reply(Lang("ClaimCooldown", player.Id, (int)Mathf.Ceil(remaining)));
                     return;
                 }
             }
