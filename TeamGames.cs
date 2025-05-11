@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.3")]
+    [Info("TeamGames Store", "TeamGames", "1.1.4")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -101,7 +101,7 @@ namespace Oxide.Plugins
                 ["SetCommandUsage"] = "Usage: /tgsetcmd <claim|secret> <newname>",
                 ["InvalidCommandType"] = "Invalid command type. Use 'claim' or 'secret'.",
                 ["CommandUpdated"] = "{0} command has been updated to /{1}.",
-                ["TeamGamesMessage"] = "{0}"
+                ["TeamGamesMessage"] = "{0}",
                 ["ClaimCooldown"] = "You must wait {0} seconds before using this command again.",
             }, this);
         }
@@ -121,7 +121,7 @@ namespace Oxide.Plugins
                 if (timeSinceLastUse < ClaimCooldownSeconds)
                 {
                     float remaining = ClaimCooldownSeconds - timeSinceLastUse;
-                    player.Reply(Lang("ClaimCooldown", player.Id, (int)Mathf.Ceil(remaining)));
+                    player.Reply(Lang("ClaimCooldown", player.Id, Mathf.CeilToInt(remaining)));
                     return;
                 }
             }
