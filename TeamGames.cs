@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.5")]
+    [Info("TeamGames Store", "TeamGames", "1.1.6")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -56,18 +56,35 @@ namespace Oxide.Plugins
         private readonly Dictionary<ulong, float> lastClaimTimes = new Dictionary<ulong, float>();
         private const float ClaimCooldownSeconds = 10f;
 
+        private PluginConfig config;
+
         protected override void LoadConfig()
         {
             base.LoadConfig();
-        
-            if (Config["store-secret-key"] == null) Config["store-secret-key"] = "default-key";
-            if (Config["claim-command"] == null) Config["claim-command"] = "tgclaim";
-            if (Config["secret-command"] == null) Config["secret-command"] = "tgsecret";
+
+            try
+            {
+                config = Config.ReadObject<PluginConfig>();
+            }
+            catch
+            {
+                PrintWarning("Config file is corrupt or invalid, creating a new one.");
+                LoadDefaultConfig();
+            }
+
             SaveConfig();
-            apiKey = Config["store-secret-key"] as string ?? "default-key";
-            claimCommand = Config["claim-command"] as string ?? "tgclaim";
-            secretCommand = Config["secret-command"] as string ?? "tgsecret";
+
+            apiKey = config.StoreSecretKey;
+            claimCommand = config.ClaimCommand;
+            secretCommand = config.SecretCommand;
         }
+
+        protected override void LoadDefaultConfig()
+        {
+            config = new PluginConfig();
+            SaveConfig();
+        }
+
 
         private void Init()
         {
@@ -155,8 +172,8 @@ namespace Oxide.Plugins
             }
 
             apiKey = args[0];
-            Config["store-secret-key"] = apiKey;
-            SaveConfig();
+            config.StoreSecretKey = apiKey;
+            Config.WriteObject(config);
 
             headers["X-API-Key"] = apiKey;
 
@@ -186,17 +203,18 @@ namespace Oxide.Plugins
             switch (cmdType)
             {
                 case "claim":
-                    Config["claim-command"] = newName;
+                    config.ClaimCommand = newName;
                     claimCommand = newName;
                     break;
                 case "secret":
-                    Config["secret-command"] = newName;
+                    config.SecretCommand = newName;
                     secretCommand = newName;
                     break;
                 default:
                     player.Reply(Lang("InvalidCommandType", player.Id));
                     return;
             }
+            Config.WriteObject(config);
 
             SaveConfig();
             player.Reply(Lang("CommandUpdated", player.Id, cmdType, newName));
@@ -316,5 +334,18 @@ namespace Oxide.Plugins
             public int product_amount { get; set; }
             public string message { get; set; }
         }
+
+        private class PluginConfig
+        {
+            [JsonProperty("store-secret-key")]
+            public string StoreSecretKey { get; set; } = "your-api-key-here";
+
+            [JsonProperty("claim-command")]
+            public string ClaimCommand { get; set; } = "tgclaim";
+
+            [JsonProperty("secret-command")]
+            public string SecretCommand { get; set; } = "tgsecret";
+        }
+
     }
 }
