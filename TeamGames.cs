@@ -43,7 +43,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.2.5")]
+    [Info("TeamGames Store", "TeamGames", "1.2.6")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -203,7 +203,7 @@ namespace Oxide.Plugins
             string newName = args[1].ToLower();
 
             // PATCH: Check if the command name is already registered by another plugin or by the server.
-            if (covalence.CommandSystem.CommandExists(newName))
+            if (ServerMgr.Instance.chatCommands.ContainsKey(newName) || ServerMgr.Instance.consoleCommands.ContainsKey(newName))
             {
                 player.Reply(Lang("CommandNameInUse", player.Id, newName));
                 return;
