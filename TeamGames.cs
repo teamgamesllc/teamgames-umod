@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.7")] // Version bump
+    [Info("TeamGames Store", "TeamGames", "1.1.8")] // Version bump
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -461,12 +461,11 @@ namespace Oxide.Plugins
             catch (FormatException ex)
             {
                 PrintWarning($"Lang formatting error for key '{key}' with {args.Length} args. Message: '{message}'. Error: {ex.Message}");
-                // Return the raw message or a generic error, to avoid crashing.
-                return message; // Or a more specific error indicator.
+                return message;
             }
         }
         
-        public override void SaveConfig() // Override to use the class-level config instance
+        protected override void SaveConfig() // Override to use the class-level config instance
         {
             Config.WriteObject(config, true);
         }
