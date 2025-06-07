@@ -38,12 +38,11 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-// Standard using directive for IPlayer.
-using Oxide.Core.Libraries.Covalence;
+// REMOVED: using Oxide.Core.Libraries.Covalence; to resolve name collision.
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.2.3")]
+    [Info("TeamGames Store", "TeamGames", "1.2.4")] // Version bump
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -141,7 +140,8 @@ namespace Oxide.Plugins
             }, this);
         }
 
-        private void ClaimCommand(IPlayer player, string command, string[] args)
+        // CORRECTED: Use fully qualified name for IPlayer
+        private void ClaimCommand(Oxide.Core.Libraries.Covalence.IPlayer player, string command, string[] args)
         {
             var basePlayer = player.Object as BasePlayer;
             if (basePlayer == null && player.IsServer) 
@@ -182,7 +182,8 @@ namespace Oxide.Plugins
             webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(basePlayer, code, response), this, RequestMethod.POST, headers);
         }
 
-        private void SetSecretCommand(IPlayer player, string command, string[] args)
+        // CORRECTED: Use fully qualified name for IPlayer
+        private void SetSecretCommand(Oxide.Core.Libraries.Covalence.IPlayer player, string command, string[] args)
         {
             var basePlayer = player.Object as BasePlayer; 
             bool isRcon = player.IsServer; 
@@ -245,8 +246,9 @@ namespace Oxide.Plugins
             PrintWarning($"Store secret key has been updated by {player.Name ?? "RCON"}.");
         }
 
+        // CORRECTED: Use fully qualified name for IPlayer
         [ChatCommand("tgsetcmd")]
-        private void SetCommandName(IPlayer player, string command, string[] args)
+        private void SetCommandName(Oxide.Core.Libraries.Covalence.IPlayer player, string command, string[] args)
         {
              bool hasPermission = false;
             if (player.IsServer) 
@@ -296,7 +298,8 @@ namespace Oxide.Plugins
                 case "claim":
                     oldCommandName = config.ClaimCommand;
                     if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Plugin.Covalence.UnregisterCommand(oldCommandName, this);
+                        // CORRECTED: This now refers to the inherited static property without ambiguity.
+                        Covalence.UnregisterCommand(oldCommandName, this);
                     
                     config.ClaimCommand = newName;
                     claimCommand = newName; 
@@ -305,7 +308,8 @@ namespace Oxide.Plugins
                 case "secret":
                     oldCommandName = config.SecretCommand;
                      if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Plugin.Covalence.UnregisterCommand(oldCommandName, this);
+                        // CORRECTED: This now refers to the inherited static property without ambiguity.
+                        Covalence.UnregisterCommand(oldCommandName, this);
                     
                     config.SecretCommand = newName;
                     secretCommand = newName; 
