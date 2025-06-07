@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.8")] // Version bump
+    [Info("TeamGames Store", "TeamGames", "1.1.9")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -83,16 +83,14 @@ namespace Oxide.Plugins
         protected override void LoadDefaultConfig()
         {
             config = new PluginConfig();
-            // SaveConfig(); // No need to save here, LoadConfig will save
         }
 
 
         private void Init()
         {
-            // Ensure config values are loaded before using them
-            if (config == null) LoadConfig(); // Should be redundant due to LoadConfig being called by Oxide, but safe
+            if (config == null) LoadConfig(); 
 
-            apiKey = config.StoreSecretKey; // Re-assign in case Init is called independently (unlikely for main class)
+            apiKey = config.StoreSecretKey; 
             claimCommand = config.ClaimCommand;
             secretCommand = config.SecretCommand;
 
@@ -102,7 +100,6 @@ namespace Oxide.Plugins
                 ["Content-Type"] = "application/json"
             };
 
-            // **Update #4: Default API Key Warning**
             if (apiKey == "your-api-key-here" || string.IsNullOrWhiteSpace(apiKey))
             {
                 PrintWarning("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -116,7 +113,7 @@ namespace Oxide.Plugins
 
             AddCovalenceCommand(claimCommand, nameof(ClaimCommand));
             AddCovalenceCommand(secretCommand, nameof(SetSecretCommand));
-            AddCovalenceCommand("tgsetcmd", nameof(SetCommandName));
+            AddCovalenceCommand("tgsetcmd", nameof(SetCommandName)); // This is a ChatCommand, but we also AddCovalence for consistency if desired, or rely on [ChatCommand]
         }
 
         protected override void LoadDefaultMessages()
@@ -145,11 +142,10 @@ namespace Oxide.Plugins
             }, this);
         }
 
-        // Callback for the dynamically registered claim command
         private void ClaimCommand(IPlayer player, string command, string[] args)
         {
             var basePlayer = player.Object as BasePlayer;
-            if (basePlayer == null && player.IsServer) // Allow RCON to trigger for testing, though it won't have a BasePlayer
+            if (basePlayer == null && player.IsServer) 
             {
                 PrintWarning("Claim command called by RCON/Server. This command is intended for players.");
                 player.Reply("This command is intended for in-game players.");
@@ -176,30 +172,34 @@ namespace Oxide.Plugins
 
             if (apiKey == "your-api-key-here" || string.IsNullOrWhiteSpace(apiKey))
             {
-                player.Reply(Lang("ApiOffline", player.Id)); // Or a more specific "admin needs to configure API key"
+                player.Reply(Lang("ApiOffline", player.Id)); 
                 PrintWarning($"Claim attempt by {player.Name} while API key is not configured.");
                 return;
             }
 
-            var postData = new Dictionary<string, string> { ["playerName"] = basePlayer.UserIDString }; // Using UserIDString for consistency
+            var postData = new Dictionary<string, string> { ["playerName"] = basePlayer.UserIDString }; 
             string jsonData = JsonConvert.SerializeObject(postData);
 
             webrequest.Enqueue(ApiUrl, jsonData, (code, response) => HandleWebResponse(basePlayer, code, response), this, RequestMethod.POST, headers);
         }
 
-        // Callback for the dynamically registered secret command
         private void SetSecretCommand(IPlayer player, string command, string[] args)
         {
-            var basePlayer = player.Object as BasePlayer; // Can be null if called from RCON
-            bool isRcon = player.IsServer; // Updated check for RCON
+            var basePlayer = player.Object as BasePlayer; 
+            bool isRcon = player.IsServer; 
 
             bool hasPermission = false;
-            if (!isRcon && basePlayer != null) // Only check permission if it's a player
+            if (!isRcon && basePlayer != null) 
             {
                 hasPermission = permission.UserHasPermission(player.Id, "teamgames.admin");
             }
+             else if (isRcon) // RCON always has permission for this
+            {
+                hasPermission = true;
+            }
 
-            if (!isRcon && !hasPermission)
+
+            if (!hasPermission) // Simplified check
             {
                 player.Reply(Lang("CommandReserved", player.Id));
                 return;
@@ -207,7 +207,7 @@ namespace Oxide.Plugins
 
             if (args.Length != 1)
             {
-                player.Reply(Lang("SecretUsage", player.Id, secretCommand)); // Pass current command name to usage
+                player.Reply(Lang("SecretUsage", player.Id, secretCommand)); 
                 return;
             }
 
@@ -246,11 +246,20 @@ namespace Oxide.Plugins
             PrintWarning($"Store secret key has been updated by {player.Name ?? "RCON"}.");
         }
 
-        // This command name "tgsetcmd" is fixed and not configurable via this command itself.
         [ChatCommand("tgsetcmd")]
         private void SetCommandName(IPlayer player, string command, string[] args)
         {
-            if (!permission.UserHasPermission(player.Id, "teamgames.admin") && !player.IsServer)
+             bool hasPermission = false;
+            if (player.IsServer) // RCON
+            {
+                hasPermission = true;
+            }
+            else // Player
+            {
+                hasPermission = permission.UserHasPermission(player.Id, "teamgames.admin");
+            }
+
+            if (!hasPermission)
             {
                 player.Reply(Lang("CommandReserved", player.Id));
                 return;
@@ -279,28 +288,28 @@ namespace Oxide.Plugins
                     return;
                 }
             }
-            // End of Update #2 validation
-
-            string newName = newNameInput.ToLower(); // Use lowercased for registration and config
+            
+            string newName = newNameInput.ToLower(); 
             string oldCommandName = "";
 
             switch (cmdType)
             {
                 case "claim":
                     oldCommandName = config.ClaimCommand;
-                    config.ClaimCommand = newName;
-                    claimCommand = newName; // Update runtime variable
-                    // Unregister old and register new if names differ and old was not default/empty
                     if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        RemoveCovalenceCommand(oldCommandName, this);
+                        Covalence.UnregisterCommand(oldCommandName, this);
+                    
+                    config.ClaimCommand = newName;
+                    claimCommand = newName; 
                     AddCovalenceCommand(newName, nameof(ClaimCommand));
                     break;
                 case "secret":
                     oldCommandName = config.SecretCommand;
+                     if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
+                        Covalence.UnregisterCommand(oldCommandName, this);
+                    
                     config.SecretCommand = newName;
-                    secretCommand = newName; // Update runtime variable
-                    if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        RemoveCovalenceCommand(oldCommandName, this);
+                    secretCommand = newName; 
                     AddCovalenceCommand(newName, nameof(SetSecretCommand));
                     break;
                 default:
@@ -309,12 +318,12 @@ namespace Oxide.Plugins
             }
             SaveConfig();
             player.Reply(Lang("CommandUpdated", player.Id, cmdType, newName));
-            PrintWarning($"{cmdType} command has been updated to /{newName} by {player.Name ?? "RCON"}. Old: {oldCommandName}");
+            PrintWarning($"{cmdType} command has been updated to /{newName} by {player.Name ?? "RCON"}. Old: /{oldCommandName}");
         }
 
         private void HandleWebResponse(BasePlayer player, int code, string response)
         {
-            if (player == null || !player.IsConnected) return; // Player might have disconnected
+            if (player == null || !player.IsConnected) return; 
 
             if (string.IsNullOrEmpty(response) || code != 200)
             {
@@ -365,22 +374,18 @@ namespace Oxide.Plugins
                     continue;
                 }
 
-                // If a transaction is primarily a message, display it and skip item processing.
                 if (!string.IsNullOrEmpty(transaction.message) && string.IsNullOrEmpty(transaction.product_id_string))
                 {
                      player.ChatMessage(Lang("TeamGamesMessage", player.UserIDString, transaction.message));
                      continue;
                 }
                 
-                // If it's an item transaction, product_id_string should be present.
                 if (string.IsNullOrEmpty(transaction.product_id_string))
                 {
-                    // If there's a message, it might have been caught above.
-                    // If not, and product_id_string is missing, it's an invalid item transaction.
                     PrintWarning($"Transaction for {player.displayName} missing product_id_string. Data: {JsonConvert.SerializeObject(transaction)}");
-                    if (!string.IsNullOrEmpty(transaction.message)) // Display any associated message
+                    if (!string.IsNullOrEmpty(transaction.message)) 
                          player.ChatMessage(Lang("TeamGamesMessage", player.UserIDString, transaction.message));
-                    else // Generic error if no message and no product_id
+                    else 
                          player.ChatMessage(Lang("ErrorProcessing", player.UserIDString));
                     continue;
                 }
@@ -396,7 +401,7 @@ namespace Oxide.Plugins
                 string itemName = ParseItemName(transaction.product_id_string);
                 if (string.IsNullOrEmpty(itemName))
                 {
-                    player.ChatMessage(Lang("ItemNotFound", player.UserIDString, transaction.product_id_string)); // or a "FailedToParseItemName"
+                    player.ChatMessage(Lang("ItemNotFound", player.UserIDString, transaction.product_id_string)); 
                     PrintWarning($"Could not parse item name from product_id_string: '{transaction.product_id_string}' for player {player.displayName}.");
                     continue;
                 }
@@ -409,8 +414,8 @@ namespace Oxide.Plugins
                     continue;
                 }
 
-                Puts(Lang("CreatingItem", player.UserIDString, transaction.product_amount, itemDefinition.shortname)); // Log to server console too
-                Item item = ItemManager.Create(itemDefinition, transaction.product_amount, 0); // skinid 0 for default
+                Puts(Lang("CreatingItem", player.UserIDString, transaction.product_amount, itemDefinition.shortname)); 
+                Item item = ItemManager.Create(itemDefinition, transaction.product_amount, 0); 
                 if (item != null)
                 {
                     bool given = player.inventory.GiveItem(item);
@@ -444,12 +449,11 @@ namespace Oxide.Plugins
             var parts = productIdentifier.Split(':');
             string potentialItemName = parts.Length > 1 ? parts[1] : parts[0];
 
-            if (string.IsNullOrWhiteSpace(potentialItemName)) return null; // Ensure parsed part is not empty
+            if (string.IsNullOrWhiteSpace(potentialItemName)) return null; 
 
-            return potentialItemName.Trim(); // Trim any accidental whitespace
+            return potentialItemName.Trim(); 
         }
 
-        // Consolidated Lang method
         private string Lang(string key, string id = null, params object[] args)
         {
             string message = lang.GetMessage(key, this, id);
@@ -461,11 +465,11 @@ namespace Oxide.Plugins
             catch (FormatException ex)
             {
                 PrintWarning($"Lang formatting error for key '{key}' with {args.Length} args. Message: '{message}'. Error: {ex.Message}");
-                return message;
+                return message; 
             }
         }
         
-        protected override void SaveConfig() // Override to use the class-level config instance
+        protected override void SaveConfig() 
         {
             Config.WriteObject(config, true);
         }
