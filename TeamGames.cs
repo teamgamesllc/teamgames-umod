@@ -42,7 +42,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.1.9")]
+    [Info("TeamGames Store", "TeamGames", "1.2.0")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -113,7 +113,17 @@ namespace Oxide.Plugins
 
             AddCovalenceCommand(claimCommand, nameof(ClaimCommand));
             AddCovalenceCommand(secretCommand, nameof(SetSecretCommand));
-            AddCovalenceCommand("tgsetcmd", nameof(SetCommandName)); // This is a ChatCommand, but we also AddCovalence for consistency if desired, or rely on [ChatCommand]
+            // tgsetcmd is handled by [ChatCommand] attribute, but AddCovalenceCommand can also be used if you want to ensure it's registered via Covalence explicitly.
+            // If using [ChatCommand], AddCovalenceCommand for "tgsetcmd" might be redundant or could cause issues if not handled carefully.
+            // For simplicity, I'll assume [ChatCommand] is sufficient for "tgsetcmd".
+            // If you want "tgsetcmd" to also be a Covalence command for console use through Covalence, you can add:
+            // AddCovalenceCommand("tgsetcmd", nameof(SetCommandName));
+            // However, the method `SetCommandName` is already decorated with `[ChatCommand("tgsetcmd")]`.
+            // Oxide's `AddCovalenceCommand` helper internally uses `Covalence.RegisterCommand`.
+            // The `[ChatCommand]` attribute registers the command with the game's chat system.
+            // If a command is registered via `AddCovalenceCommand`, it's available via Covalence (console, other plugins).
+            // If it's `[ChatCommand]`, it's available in chat. Often they overlap.
+            // Let's keep tgsetcmd as a [ChatCommand] for now, as its dynamic registration is handled by the attribute.
         }
 
         protected override void LoadDefaultMessages()
@@ -193,13 +203,13 @@ namespace Oxide.Plugins
             {
                 hasPermission = permission.UserHasPermission(player.Id, "teamgames.admin");
             }
-             else if (isRcon) // RCON always has permission for this
+             else if (isRcon) 
             {
                 hasPermission = true;
             }
 
 
-            if (!hasPermission) // Simplified check
+            if (!hasPermission) 
             {
                 player.Reply(Lang("CommandReserved", player.Id));
                 return;
@@ -250,11 +260,11 @@ namespace Oxide.Plugins
         private void SetCommandName(IPlayer player, string command, string[] args)
         {
              bool hasPermission = false;
-            if (player.IsServer) // RCON
+            if (player.IsServer) 
             {
                 hasPermission = true;
             }
-            else // Player
+            else 
             {
                 hasPermission = permission.UserHasPermission(player.Id, "teamgames.admin");
             }
@@ -297,7 +307,7 @@ namespace Oxide.Plugins
                 case "claim":
                     oldCommandName = config.ClaimCommand;
                     if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Covalence.UnregisterCommand(oldCommandName, this);
+                        Covalence.CommandSystem.UnregisterCommand(oldCommandName, this);
                     
                     config.ClaimCommand = newName;
                     claimCommand = newName; 
@@ -306,7 +316,7 @@ namespace Oxide.Plugins
                 case "secret":
                     oldCommandName = config.SecretCommand;
                      if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Covalence.UnregisterCommand(oldCommandName, this);
+                        Covalence.CommandSystem.UnregisterCommand(oldCommandName, this);
                     
                     config.SecretCommand = newName;
                     secretCommand = newName; 
