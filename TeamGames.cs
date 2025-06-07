@@ -38,11 +38,11 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-using Oxide.Core.Libraries.Covalence;
+using Oxide.Core.Libraries.Covalence; // Enables using IPlayer etc.
 
 namespace Oxide.Plugins
 {
-    [Info("TeamGames Store", "TeamGames", "1.2.0")]
+    [Info("TeamGames Store", "TeamGames", "1.2.1")]
     [Description("Official support for the TeamGames monetization platform.")]
     public class TeamGames : RustPlugin
     {
@@ -73,7 +73,7 @@ namespace Oxide.Plugins
                 LoadDefaultConfig();
             }
 
-            SaveConfig(); // Save to ensure any new fields from default config are written
+            SaveConfig(); 
 
             apiKey = config.StoreSecretKey;
             claimCommand = config.ClaimCommand;
@@ -110,20 +110,8 @@ namespace Oxide.Plugins
                 PrintWarning("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             }
 
-
             AddCovalenceCommand(claimCommand, nameof(ClaimCommand));
             AddCovalenceCommand(secretCommand, nameof(SetSecretCommand));
-            // tgsetcmd is handled by [ChatCommand] attribute, but AddCovalenceCommand can also be used if you want to ensure it's registered via Covalence explicitly.
-            // If using [ChatCommand], AddCovalenceCommand for "tgsetcmd" might be redundant or could cause issues if not handled carefully.
-            // For simplicity, I'll assume [ChatCommand] is sufficient for "tgsetcmd".
-            // If you want "tgsetcmd" to also be a Covalence command for console use through Covalence, you can add:
-            // AddCovalenceCommand("tgsetcmd", nameof(SetCommandName));
-            // However, the method `SetCommandName` is already decorated with `[ChatCommand("tgsetcmd")]`.
-            // Oxide's `AddCovalenceCommand` helper internally uses `Covalence.RegisterCommand`.
-            // The `[ChatCommand]` attribute registers the command with the game's chat system.
-            // If a command is registered via `AddCovalenceCommand`, it's available via Covalence (console, other plugins).
-            // If it's `[ChatCommand]`, it's available in chat. Often they overlap.
-            // Let's keep tgsetcmd as a [ChatCommand] for now, as its dynamic registration is handled by the attribute.
         }
 
         protected override void LoadDefaultMessages()
@@ -307,7 +295,7 @@ namespace Oxide.Plugins
                 case "claim":
                     oldCommandName = config.ClaimCommand;
                     if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Covalence.CommandSystem.UnregisterCommand(oldCommandName, this);
+                        Interface.Oxide.Covalence.UnregisterCommand(oldCommandName, this);
                     
                     config.ClaimCommand = newName;
                     claimCommand = newName; 
@@ -316,7 +304,7 @@ namespace Oxide.Plugins
                 case "secret":
                     oldCommandName = config.SecretCommand;
                      if (!string.IsNullOrEmpty(oldCommandName) && oldCommandName != newName)
-                        Covalence.CommandSystem.UnregisterCommand(oldCommandName, this);
+                        Interface.Oxide.Covalence.UnregisterCommand(oldCommandName, this);
                     
                     config.SecretCommand = newName;
                     secretCommand = newName; 
